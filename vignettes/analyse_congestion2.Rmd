@@ -261,8 +261,8 @@ pal <- c( "#2ec7c9",
         "#6f5553",
         "#c14089")
 show_col(pal)
-font_add_google("Alegreya Sans", "aleg")
-
+font_add_google(name = "Playfair Display", family = "Playfair Display")
+showtext_auto()
 title_color <- "#008acd"
 subtitle_color <- "#aaaaaa"
 axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
@@ -298,7 +298,7 @@ g <- ggplot(congestion_journaliere, aes(x = date, y = score)) +
   annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
   
   geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
-                fill = NA, label.color = NA) +
+                fill = NA, label.color = NA, family = "Playfair Display") +
   coord_cartesian( 
     ylim = c(mini,maxi)
   )
@@ -308,7 +308,7 @@ g
 ```{r}
 library(ggrepel)
 
-g +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5])
+g +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = "Playfair Display")
 
 ```
 

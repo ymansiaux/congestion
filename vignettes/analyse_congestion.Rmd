@@ -1,10 +1,8 @@
 ---
-title: "analyse_congestion"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{analyse_congestion}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+title: "Untitled"
+author: "YM"
+date: "11/01/2022"
+output: html_document
 ---
 
 ```{r, include = FALSE}
@@ -23,64 +21,14 @@ library(sf)
 library(ggplot2)
 library(data.table)
 library(dplyr)
+library(lubridate)
+library(ggtext)
+library(ggforce)
+library(scales)
+library(showtext)
+library(ggrepel)
+library(patchwork)
 ```
-
-
-```{r}
-key <- Sys.getenv("XTRADATA_KEY")
-typename <- "CI_TRAFI_L"
-rangeStart <- "2021-11-01"
-rangeEnd <- "2021-11-08"
-```
-
-
-# Dessin des tronçons
-
-```{r}
-troncons <- xtradata_requete_features(key = key, typename = typename, backintime = "2021-11-01T08:00:00")
-```
-
-```{r}
-ggplot(troncons) +
-  geom_sf(aes(color = "red")) +
-  coord_sf() +
-  theme_bw()
-```
-
-
-
-```{r}
-sample_congestion
-
-sample_congestion_week <- copy(sample_congestion) %>% 
-  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
-
-troncons_scores <- inner_join(troncons, sample_congestion_week, by = "gid" )
-
-```
-
-# faire une carto, rajouter contours des communes etc ...
-# faire un graphe joli
-
-```{r}
-
-congestion_gid <- copy(congestion_78weeks_dt) %>% 
-  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
-
-
-troncons_scores <- inner_join(troncons, congestion_gid, by = "gid" )
-
-
-ggplot(troncons_scores) +
-  geom_sf(aes(color = score), lwd = 1) +
-  coord_sf() +
-  scale_color_gradient2(midpoint = median(troncons_scores$score, na.rm = TRUE), low = "#2E7F18",
-                        mid = "yellow", high = "#C82538") +
-  theme_bw()
-
-
-```
-
 
 # Time Series du niveau de congestion moyen
 
@@ -103,227 +51,184 @@ congestion_journaliere <- copy(congestion_from_sept2019_dt) %>%
 ```
 
 ```{r}
-ggplot(congestion_journaliere, aes(x = date, y = score)) +
-  geom_line() +
-  geom_smooth()
-
-# rajouter les confinements
-
-
-
-congestion_journaliere[date=="2020-07-12"]
-```
-
-
-# En HPM, en HPS, en JO avec plusieurs panels
-
-
-
-# Theme penguins à incorporer
-
-```{r}
-library(ggtext)
-
-theme_set(theme_minimal(base_family = "Avenir Next Condensed"))
-theme_update(
-  axis.title = element_blank(),
-  axis.text = element_text(color = "grey40"),
-  axis.text.x = element_text(size = 20, margin = margin(t = 5)),
-  axis.text.y = element_text(size = 17, margin = margin(r = 5)),
-  axis.ticks = element_line(color = "grey91", size = .5),
-  axis.ticks.length.x = unit(1.3, "lines"),
-  axis.ticks.length.y = unit(.7, "lines"),
-  panel.grid = element_blank(),
-  plot.margin = margin(20, 40, 20, 40),
-  plot.background = element_rect(fill = "grey98", color = "grey98"),
-  panel.background = element_rect(fill = "grey98", color = "grey98"),
-  plot.title = element_text(color = "grey10", size = 32, face = "bold",
-                            margin = margin(t = 15)),
-  plot.subtitle = element_markdown(color = "grey30", size = 17, 
-                                   lineheight = 1.35,
-                                   margin = margin(t = 15, b = 40)),
-  plot.title.position = "plot",
-  plot.caption.position = "plot",
-  plot.caption = element_text(color = "grey30", size = 15,
-                              lineheight = 1.2, hjust = 0, 
-                              margin = margin(t = 40)),
-  legend.position = "none"
-)
-```
-
-```{r}
-library(bdxmetroidentity)
-library(ggtext)
-
-confinements <- data.frame(
-  deb = c(as.Date("2020-03-17"), as.Date("2020-10-30"), as.Date("2021-04-03")),
-  fin = c(as.Date("2020-05-10"), as.Date("2020-12-14"), as.Date("2021-05-03")),
-  label = c("Confinement", "Confinement", "Confinement")
-)
-
-mini <- min(congestion_journaliere$score)
-maxi <- max(congestion_journaliere$score)
-
-ggplot(congestion_journaliere, aes(x = date, y = score)) +
-  geom_line(alpha = .7) +
-  geom_smooth() +
-  labs(x = "Date", y = "Score de congestion",
-       title = "Temperatures in Chicago",
-       subtitle = "Daily temperatures in °F from 1997 to 2001") +
-  theme_bdxmetro_light() +
-  theme(plot.title = element_text(family = "Bangers", hjust = .5, size = 25),
-        plot.subtitle = element_text(family = "Playfair", hjust = .5, size = 15)) +
+theme_macarons <- function(my_font) {
+  # inspiré du style macarons de echarts
+  # https://echarts.apache.org/en/theme-builder.html
   
-  # annotate("rect", data = confinements, aes(xmin = deb, xmax = fin, ymin = rep(-Inf, nrow(confinements)), ymax = rep(Inf, nrow(confinements))))
+  bg_color <- "white"
   
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = -Inf, ymax = Inf, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = -Inf, ymax = Inf, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"), ymin = -Inf, ymax = Inf, alpha = .1, fill = "blue") +
-  geom_vline(xintercept = as.numeric(as.Date("2021-06-20")), color = "red") +
-  geom_richtext(data = confinements, mapping = aes(x = fin, y = 1.25, label = label), angle = 90,  hjust = 0,
-                # nudge_y = -.01, nudge_x = -2,
-                fill = NA, label.color = NA,
-                label.padding = grid::unit(rep(1, 4), "lines")) +
-  coord_cartesian( 
-    # xlim = c(160, 250), 
-    ylim = c(mini,maxi)
-  )
-# nudge_y = max(congestion_journaliere$score))
-
-fill = NA, label.color = NA, # remove background and outline
-label.padding = grid::unit(rep(0, 4), "pt") 
-
-
-On pourrait annoter les points des confinements
-
-p +
-  annotate("rect", xmin = 1950, xmax = 1980, ymin = -1, ymax = 1,
-           alpha = .1,fill = "blue")
-
-# incorporer zone coloree confinement couvre feu etc ...
-# https://dataviz.cerema.fr/trafic-routier/
-# voir 2019/19 pour l'incorporation de fleches avec du texte : https://github.com/z3tt/TidyTuesday
-
-```
-
-```{r}
-library(lubridate)
-library(ggtext)
-
-confinements <- data.frame(
-  deb = c(as.Date("2020-03-17"), as.Date("2020-10-30"), as.Date("2021-04-03")),
-  fin = c(as.Date("2020-05-10"), as.Date("2020-12-14"), as.Date("2021-05-03")),
-  label = c("Confinement", "Confinement", "Confinement")
-)
-
-mini <- min(congestion_journaliere$score)
-maxi <- max(congestion_journaliere$score)
-
-ggplot(congestion_journaliere, aes(x = date, y = score)) +
-  geom_line(alpha = .7) +
-  geom_smooth(method = "gam") +
-  labs(x = "Date", y = "Score de congestion",
-       title = "Evolution score de confinement",
-       subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)") +
-  # theme_bdxmetro_light() +
-  theme(axis.title = element_blank(),
-        # axis.text = element_text(color = "grey40"),
-        # axis.text.x = element_text(size = 11),
-        # axis.text.y = element_text(size = 11),
-        # axis.ticks = element_line(color = "grey91", size = .5),
-        # axis.ticks.length.x = unit(1.3, "lines"),
-        # axis.ticks.length.y = unit(.7, "lines"),
+  font_add_google(name = my_font, family = my_font)
+  showtext_auto()
+  
+  title_color <- "#008acd"
+  subtitle_color <- "#aaaaaa"
+  axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
+  axis_text_color <- axis_tick_color
+  
+  # 
+  # title_color <- "#ffffff"
+  # subtitle_color <- "#dddddd"
+  # axis_tick_color <- subtitle_color
+  # axis_text_color <- subtitle_color
+  
+  theme(text = element_text(family = my_font),
+        axis.title = element_blank(),
+        axis.text = element_text(color = axis_text_color),
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
+        axis.ticks = element_line(color = subtitle_color, size = .5),
+        axis.ticks.length.x = unit(.7, "lines"),
+        axis.ticks.length.y = unit(.7, "lines"),
         panel.grid = element_blank(),
-        # plot.margin = margin(20, 40, 20, 40),
-        plot.background = element_rect(fill = "grey98", color = "grey98"),
-        panel.background = element_rect(fill = "grey98", color = "grey98"),
-        plot.title = element_text(color = "grey10", size = 18),
-        plot.subtitle = element_markdown(color = "grey30", size = 13),
+        plot.margin = margin(20, 20, 20, 20),
+        plot.background = element_rect(fill = bg_color, color =  bg_color),
+        panel.background = element_rect(fill = bg_color, color =  bg_color),
+        plot.title = element_text(color = title_color, size = 18, family = my_font),
+        plot.subtitle = element_markdown(color = subtitle_color, size = 13),
         plot.title.position = "plot",
         plot.caption.position = "plot",
-        # plot.caption = element_text(color = "grey30", size = 15,
-        #                             lineheight = 1.2, hjust = 0, 
-        #                             margin = margin(t = 40)),
-        legend.position = "none") +
+        legend.position = "none")
   
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = "red") +
-  
-  geom_richtext(data = confinements, mapping = aes(x = fin - days(10), y = maxi, label = label), angle = -90, hjust = 0,
-                fill = NA, label.color = NA) +
-  # label.padding = grid::unit(rep(1, 4), "lines")) +
-  coord_cartesian( 
-    ylim = c(mini,maxi)
-  )
+}
+
+pal <- c("#2ec7c9",
+         "#b6a2de",
+         "#5ab1ef",
+         "#ffb980",
+         "#d87a80",
+         "#8d98b3",
+         "#e5cf0d",
+         "#97b552",
+         "#95706d",
+         "#dc69aa",
+         "#07a2a4",
+         "#9a7fd1",
+         "#588dd5",
+         "#f5994e",
+         "#c05050",
+         "#59678c",
+         "#c9ab00",
+         "#7eb00a",
+         "#6f5553",
+         "#c14089")
 ```
 
-# Autre theme 
 ```{r}
-library(tidyverse)
-library(ggrepel)
-library(ggtext)
-library(systemfonts)
-library(gganimate)
-```
-```{r}
-theme_set(theme_minimal(base_family = "Avenir Next Condensed"))
-theme_update(
-  axis.title = element_blank(),
-  axis.text = element_text(color = "grey40"),
-  axis.text.x = element_text(size = 20, margin = margin(t = 5)),
-  axis.text.y = element_text(size = 17, margin = margin(r = 5)),
-  axis.ticks = element_line(color = "grey91", size = .5),
-  axis.ticks.length.x = unit(1.3, "lines"),
-  axis.ticks.length.y = unit(.7, "lines"),
-  panel.grid = element_blank(),
-  plot.margin = margin(20, 40, 20, 40),
-  plot.background = element_rect(fill = "grey98", color = "grey98"),
-  panel.background = element_rect(fill = "grey98", color = "grey98"),
-  plot.title = element_text(color = "grey10", size = 32, face = "bold",
-                            margin = margin(t = 15)),
-  plot.subtitle = element_markdown(color = "grey30", size = 17, 
-                                   lineheight = 1.35,
-                                   margin = margin(t = 15, b = 40)),
-  plot.title.position = "plot",
-  plot.caption.position = "plot",
-  plot.caption = element_text(color = "grey30", size = 15,
-                              lineheight = 1.2, hjust = 0, 
-                              margin = margin(t = 40)),
-  legend.position = "none"
+
+# inspiré du style macarons de echarts
+# https://echarts.apache.org/en/theme-builder.html
+
+confinements <- data.frame(
+  deb = c(as.Date("2020-03-17"), as.Date("2020-10-30"), as.Date("2021-04-03")),
+  fin = c(as.Date("2020-05-10"), as.Date("2020-12-14"), as.Date("2021-05-03")),
+  label = c("Confinement", "Confinement", "Confinement")
 )
-```
 
-```{r}
-ggplot(congestion_journaliere, aes(x = date, y = score)) +
-  geom_line(alpha = .7) +
-  geom_smooth(method = "gam") +
+mini <- min(congestion_journaliere$score)
+maxi <- max(congestion_journaliere$score)
+
+my_font <- "Playfair Display"
+
+plot_journalier <- ggplot(congestion_journaliere, aes(x = date, y = score)) +
+  geom_line(alpha = .6, color = pal[1]) +
+  geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
   labs(x = "Date", y = "Score de congestion",
-       title = "Evolution score de confinement",
+       title = "Evolution score de congestion (Journée complète)",
        subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)") +
-  # theme_bdxmetro_light() +
-  theme(plot.title = element_text(family = "Bangers", hjust = .5, size = 20),
-        plot.subtitle = element_text(family = "Playfair", hjust = .5, size = 15)) +
   
-  # annotate("rect", data = confinements, aes(xmin = deb, xmax = fin, ymin = rep(-Inf, nrow(confinements)), ymax = rep(Inf, nrow(confinements))))
+  theme_macarons(my_font = my_font) +
   
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .1, fill = "blue") +
-  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = "red") +
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
   
-  geom_richtext(data = confinements, mapping = aes(x = fin - days(10), y = maxi, label = label), angle = -90, hjust = 0,
-                fill = NA, label.color = NA) +
-  # label.padding = grid::unit(rep(1, 4), "lines")) +
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+                fill = NA, label.color = NA, family = my_font) +
   coord_cartesian( 
     ylim = c(mini,maxi)
-  )
+  ) +
+  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+plot_journalier
+
 ```
 
 
-# Faire un GAM pour l'effet du confinement
+# HPM
 
-# Carto animée
+```{r}
+congestion_HPM <- copy(congestion_from_sept2019_dt) %>% 
+  .[HPM == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
 
-# Stream plot
+
+```{r}
+
+mini <- min(congestion_HPM$score)
+maxi <- max(congestion_HPM$score)
+
+plot_HPM <- ggplot(congestion_HPM, aes(x = date, y = score)) +
+  geom_line(alpha = .6, color = pal[1]) +
+  geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+  labs(x = "Date", y = "Score de congestion",
+       title = "Evolution score de congestion (HPM)",
+       subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)") +
+
+     theme_macarons(my_font = my_font) +
+
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+                fill = NA, label.color = NA, family = "Playfair Display") +
+  coord_cartesian( 
+    ylim = c(mini,maxi)
+  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+plot_HPM
+```
+
+
+# HPS
+
+```{r}
+congestion_HPS <- copy(congestion_from_sept2019_dt) %>% 
+  .[HPS == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+```{r}
+
+mini <- min(congestion_HPS$score)
+maxi <- max(congestion_HPS$score)
+
+plot_HPS <- ggplot(congestion_HPS, aes(x = date, y = score)) +
+  geom_line(alpha = .6, color = pal[1]) +
+  geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+  labs(x = "Date", y = "Score de congestion",
+       title = "Evolution score de congestion (HPS)",
+       subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)") +
+ 
+   theme_macarons(my_font = my_font) +
+  
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+                fill = NA, label.color = NA, family = "Playfair Display") +
+  coord_cartesian( 
+    ylim = c(mini,maxi)
+  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+plot_HPS
+```
+
+# faire un seul graphe
+
+```{r}
+plot_journalier / (plot_HPM | plot_HPS)
+```

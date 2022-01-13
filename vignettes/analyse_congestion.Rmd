@@ -124,8 +124,8 @@ confinements <- data.frame(
   label = c("Confinement", "Confinement", "Confinement")
 )
 
-mini <- min(congestion_journaliere$score)
-maxi <- max(congestion_journaliere$score)
+miniJ <- min(congestion_journaliere$score)
+maxiJ <- max(congestion_journaliere$score)
 
 my_font <- "Playfair Display"
 
@@ -138,17 +138,17 @@ plot_journalier <- ggplot(congestion_journaliere, aes(x = date, y = score)) +
   
   theme_macarons(my_font = my_font) +
   
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
   
-  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ * .92, label = label), angle = -90, #hjust = 0,
                 fill = NA, label.color = NA, family = my_font) +
   coord_cartesian( 
-    ylim = c(mini,maxi)
+    ylim = c(miniJ,maxiJ)
   ) +
-  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
 plot_journalier
 
 ```
@@ -165,8 +165,8 @@ congestion_HPM <- copy(congestion_from_sept2019_dt) %>%
 
 ```{r}
 
-mini <- min(congestion_HPM$score)
-maxi <- max(congestion_HPM$score)
+miniHPM <- min(congestion_HPM$score)
+maxiHPM <- max(congestion_HPM$score)
 
 plot_HPM <- ggplot(congestion_HPM, aes(x = date, y = score)) +
   geom_line(alpha = .6, color = pal[1]) +
@@ -177,16 +177,16 @@ plot_HPM <- ggplot(congestion_HPM, aes(x = date, y = score)) +
 
      theme_macarons(my_font = my_font) +
 
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = miniHPM, ymax = maxiHPM, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = miniHPM, ymax = maxiHPM, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = miniHPM, ymax = maxiHPM, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniHPM, yend = maxiHPM,  color = pal[5]) +
   
-  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiHPM * .92, label = label), angle = -90, #hjust = 0,
                 fill = NA, label.color = NA, family = "Playfair Display") +
   coord_cartesian( 
-    ylim = c(mini,maxi)
-  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+    ylim = c(miniHPM,maxiHPM)
+  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxiHPM, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
 plot_HPM
 ```
 
@@ -202,8 +202,8 @@ congestion_HPS <- copy(congestion_from_sept2019_dt) %>%
 
 ```{r}
 
-mini <- min(congestion_HPS$score)
-maxi <- max(congestion_HPS$score)
+miniHPS <- min(congestion_HPS$score)
+maxiHPS <- max(congestion_HPS$score)
 
 plot_HPS <- ggplot(congestion_HPS, aes(x = date, y = score)) +
   geom_line(alpha = .6, color = pal[1]) +
@@ -214,21 +214,21 @@ plot_HPS <- ggplot(congestion_HPS, aes(x = date, y = score)) +
  
    theme_macarons(my_font = my_font) +
   
-  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
-  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = miniHPS, ymax = maxiHPS, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = miniHPS, ymax = maxiHPS, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = miniHPS, ymax = maxiHPS, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniHPS, yend = maxiHPS,  color = pal[5]) +
   
-  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+  geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiHPS * .90, label = label), angle = -90, #hjust = 0,
                 fill = NA, label.color = NA, family = "Playfair Display") +
   coord_cartesian( 
-    ylim = c(mini,maxi)
-  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+    ylim = c(miniHPS,maxiHPS)
+  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxiHPS, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
 plot_HPS
 ```
 
 # faire un seul graphe
 
 ```{r}
-plot_journalier / (plot_HPM | plot_HPS)
+ggsave(filename = "toto.png", plot = plot_journalier / (plot_HPM | plot_HPS), dpi = 600, units = "px", width = 800, height = 1200)
 ```

@@ -68,7 +68,10 @@ histo_long_congestion <- function(nweeks_to_add, startDate, scores_referentiels)
  
     score <- merge(dt_x, scores_referentiels, by = "value")
     
-    if(any(score$value != "INCONNU")) {
+    # if(any(score$value != "INCONNU")) {
+    #   correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+    # }
+    if(any(score$value == "INCONNU") & nrow(score)>1) {
       correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
     }
     
@@ -94,4 +97,50 @@ toc()
 congestion_from_sept2019_dt <- rbindlist(congestion_78weeks) %>% unique()
 
 usethis::use_data(congestion_from_sept2019_dt, overwrite = TRUE)
+
+
+# recherche de bug
+
+GID 2821
+06-09-2019
+library(xtradata)
+library(data.table)
+library(purrr)
+library(lubridate)
+
+key <- Sys.getenv("XTRADATA_KEY")
+typename <- "CI_TRAFI_L"
+rangeStart <- "2019-09-06"
+rangeEnd <- "2019-09-08"
+scores_referentiels <- data.table(value = c("FLUIDE", "DENSE", "EMBOUTEILLE", "INCONNU"), score = c(1,2,3,NA))
+
+
+histo_congestion <- xtradata_requete_aggregate(key = key, 
+                                               typename = typename, 
+                                               rangeStart = rangeStart, 
+                                               rangeEnd = rangeEnd, 
+                                               rangeStep = "hour",
+                                               filter = list("gid" = 2821),
+                                               attributes = list("etat" = "accumulateex"),
+                                               showURL = TRUE)
+.x <- histo_congestion[19,]$etat
+
+
+  
+  dt_x <- as.data.table(.x)
+  
+  correctif_ratio <- 1
+  
+  score <- merge(dt_x, scores_referentiels, by = "value")
+  
+  if(any(score$value == "INCONNU") & nrow(score)>1) {
+    correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+  }
+  
+  score <- score %>% 
+    .[, ratio := ratio / correctif_ratio] %>% 
+    .[,score_pondere := ratio * score]
+  sum(score$score_pondere, na.rm = TRUE)
+})
+
 

@@ -34,6 +34,7 @@ library(patchwork)
 
 ```{r}
 congestion_from_sept2019_dt <- congestion_from_sept2019_dt %>% 
+  .[scores_horaires_ponderes >3, scores_horaires_ponderes := 3] %>% 
   .[, time := lubridate::as_datetime(time, tz = "Europe/Paris")] %>% 
   .[, date := lubridate::as_date(time)] %>% 
   .[, hour := data.table::hour(time)] %>% 
@@ -45,13 +46,6 @@ congestion_from_sept2019_dt <- congestion_from_sept2019_dt %>%
 
 congestion_journaliere <- copy(congestion_from_sept2019_dt) %>% 
   .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
-
-
-confinements <- data.frame(
-  deb = c(as.Date("2020-03-17"), as.Date("2020-10-30"), as.Date("2021-04-03")),
-  fin = c(as.Date("2020-05-10"), as.Date("2020-12-14"), as.Date("2021-05-03")),
-  label = c("Confinement", "Confinement", "Confinement")
-)
 
 ```
 
@@ -119,16 +113,15 @@ pal <- c("#2ec7c9",
 ```
 
 ```{r}
-
-# inspiré du style macarons de echarts
-# https://echarts.apache.org/en/theme-builder.html
-
 confinements <- data.frame(
   deb = c(as.Date("2020-03-17"), as.Date("2020-10-30"), as.Date("2021-04-03")),
   fin = c(as.Date("2020-05-10"), as.Date("2020-12-14"), as.Date("2021-05-03")),
   label = c("Confinement", "Confinement", "Confinement")
 )
+```
 
+
+```{r}
 miniJ <- min(congestion_journaliere$score)
 maxiJ <- max(congestion_journaliere$score)
 
@@ -237,7 +230,31 @@ plot_HPS
 ```{r}
 plot_journalier / (plot_HPM | plot_HPS)
 ```
+
 # Faire un écart à la référence : choisir une semaine de référence (1ere semaine de janvier 2020)
+
+```{r}
+congestion_journaliere_week_of_ref <- congestion_journaliere[date >= as_date("2020-01-06") & date < as_date("2020-01-13")] %>% 
+  .[, day := data.table::wday(date)] 
+
+
+congestion_journaliere_start_in_2020 <- congestion_journaliere[date >= as_date("2020-01-06")] %>% 
+  .[, day := data.table::wday(date)] 
+
+comparaison_journaliere_ref <- merge(congestion_journaliere_start_in_2020, congestion_journaliere_week_of_ref[, c("score", "day")], by = "day") %>% 
+  .[, ecart_ref := score.x - score.y] %>% 
+  .[order(date)]
+
+```
+
+```{r}
+ggplot(comparaison_journaliere_ref, aes(x = date, y = ecart_ref)) +
+  geom_line()
+```
+
+
+
+
 # Faire un graphe semblable avec les compteurs
 # Voir les temps de parcours
 
@@ -380,8 +397,6 @@ map_postconfinement <- ggplot() +
   
   geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
   
-  geom_sf(data = roads, color = "grey", alpha = .1) +
-  
   geom_sf(data = garonne, fill = "#ccddef",  
           color = "#ccddef", alpha = .5)  +
   
@@ -397,9 +412,9 @@ map_postconfinement <- ggplot() +
 library(gganimate)
 
 troncons_3 <- bind_rows(
-troncons_1mois_avant_confinement %>% mutate(periode = "1-preconfinement"),
-troncons_pendant_confinement %>% mutate(periode = "2-confinement"),
-troncons_1mois_apres_confinement %>% mutate(periode = "3-postconfinement")
+  troncons_1mois_avant_confinement %>% mutate(periode = "1-preconfinement"),
+  troncons_pendant_confinement %>% mutate(periode = "2-confinement"),
+  troncons_1mois_apres_confinement %>% mutate(periode = "3-postconfinement")
 )
 
 
@@ -435,4 +450,94 @@ anim_save(filename = here::here("2020_52_BigMacIndex.gif"), animation = index_an
 # https://github.com/z3tt/TidyTuesday/blob/master/R/2020_52_BigMacIndex.Rmd
 # https://gganimate.com/articles/gganimate.html
 ```
+
+# Analyse des capteurs
+
+```{r}
+# xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), 
+#                           typename = "PC_CAPTE_P",
+#                           backintime = "2020-11-04T00:00:00"
+# )
+capteurs <- xtradata_requete_aggregate(key = Sys.getenv("XTRADATA_KEY"), 
+                                       typename = "PC_CAPTE_P", 
+                                       rangeStart = "2020-11-05", 
+                                       rangeEnd = Sys.Date()-1,
+                                       attributes = list("comptage_5m" = "sum"),
+                                       group="time")
+
+capteurs <- capteurs %>% 
+  as.data.table() %>% 
+  .[, time := lubridate::as_datetime(time, tz = "Europe/Paris")] %>% 
+  .[, date := lubridate::as_date(time)] %>% 
+  .[, hour := data.table::hour(time)] %>% 
+  .[, day := data.table::wday(time)] %>% 
+  .[, HPM := hour %in% 7:9] %>% 
+  .[, HPS := hour %in% 17:19] %>% 
+  .[, JO := day %in% 2:6]
+
+
+```
+
+```{r}
+capteurs_sum_by_day <- capteurs %>% 
+  .[, .(comptage_5m = sum(comptage_5m, na.rm = TRUE)), by = date]
+
+mini <- min(capteurs_sum_by_day$comptage_5m)
+maxi <- max(capteurs_sum_by_day$comptage_5m)
+
+ggplot(capteurs_sum_by_day, aes(x = date, y = comptage_5m)) +
+  geom_line(alpha = .6, color = pal[1]) +
+  geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+  labs(x = "Date", y = "Somme des comptages journaliers",
+       title = "Evolution des comptages journaliers") +
+  
+  theme_macarons(my_font = my_font) +
+  
+  # annotate("rect", xmin = as.Date("2020-03-17"), xmax = as.Date("2020-05-10"), ymin = miniHPS, ymax = maxiHPS, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2020-10-30"), xmax = as.Date("2020-12-14"), ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("rect", xmin = as.Date("2021-04-03"), xmax = as.Date("2021-05-03"),  ymin = mini, ymax = maxi, alpha = .25, fill = pal[4]) +
+  annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = mini, yend = maxi,  color = pal[5]) +
+  
+  geom_richtext(data = confinements[-1,], mapping = aes(x = fin - ((fin-deb)/2), y = maxi, label = label), angle = -90, hjust = 0,
+                fill = NA, label.color = NA, family = "Playfair Display") +
+  coord_cartesian( 
+    ylim = c(mini,maxi)
+  ) +  geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), mapping = aes(x = x, y = .99 * maxi, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = my_font)
+```
+
+# Temps de parcours : étude d'un écart à la référence
+
+```{r}
+temps_parcours_geo <- read_sf("/data/donnees_geo/CI_TRAFI_L/temps_trajet.json")
+
+# temps_parcours <- xtradata_requete_features(
+#   key = Sys.getenv("XTRADATA_KEY"), 
+#   typename = "CI_TPSTJ_A",
+#   backintime = "2021-08-04T08:00:00"
+# )
+
+temps_parcours_stats <- xtradata_requete_aggregate(
+  key = Sys.getenv("XTRADATA_KEY"), 
+  typename = "CI_TPSTJ_A",
+  rangeStart = "2021-08-05",
+  rangeEnd = Sys.Date()-1,
+  rangeStep = "hour",
+  attributes = list("actuel"="average", "ref"="average")
+)
+
+
+temps_parcours_DT <- as.data.table(temps_parcours_stats) %>% 
+  .[, time := as_datetime(time, tz = "Europe/Paris")] %>% 
+  .[, ecart_actuel_ref := (100 * actuel / ref)]
+
+temps_parcours_hourly <- copy(temps_parcours_DT) %>% 
+  .[ecart_actuel_ref != Inf] %>% 
+  .[, .(ecart_actuel_ref = mean(ecart_actuel_ref)), by = time]
+```
+
+```{r}
+ggplot(temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000], aes(x = time, y = ecart_actuel_ref)) +
+  geom_line()
+```
+
 

@@ -68,12 +68,11 @@ histo_long_congestion <- function(nweeks_to_add, startDate, scores_referentiels)
  
     score <- merge(dt_x, scores_referentiels, by = "value")
     
-    # if(any(score$value != "INCONNU")) {
-    #   correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
-    # }
     if(any(score$value == "INCONNU") & nrow(score)>1) {
-      correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+      # correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+      correctif_ratio <- 1/sum(score$ratio[score$value != "INCONNU"])
     }
+    
     
     score <- score %>% 
       .[, ratio := ratio / correctif_ratio] %>% 
@@ -98,10 +97,13 @@ congestion_from_sept2019_dt <- rbindlist(congestion_78weeks) %>% unique()
 
 usethis::use_data(congestion_from_sept2019_dt, overwrite = TRUE)
 
+# congestion_from_sept2019_dt[scores_horaires_ponderes>3, lubridate::as_date(time)] %>% unique() %>% sort()
+# on a tjs des pb a posteriori, avant l'historique pré 04/2020 (intégré par AW)
+# on remplacera les valeurs problématiques par des 3
 
 # recherche de bug
 
-GID 2821
+GID 2822
 06-09-2019
 library(xtradata)
 library(data.table)
@@ -120,10 +122,10 @@ histo_congestion <- xtradata_requete_aggregate(key = key,
                                                rangeStart = rangeStart, 
                                                rangeEnd = rangeEnd, 
                                                rangeStep = "hour",
-                                               filter = list("gid" = 2821),
+                                               filter = list("gid" = 2824),
                                                attributes = list("etat" = "accumulateex"),
                                                showURL = TRUE)
-.x <- histo_congestion[19,]$etat
+.x <- histo_congestion[18,]$etat
 
 
   
@@ -134,11 +136,12 @@ histo_congestion <- xtradata_requete_aggregate(key = key,
   score <- merge(dt_x, scores_referentiels, by = "value")
   
   if(any(score$value == "INCONNU") & nrow(score)>1) {
-    correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+    # correctif_ratio <- max(score$ratio[score$value != "INCONNU"])
+    correctif_ratio <- 1/sum(score$ratio[score$value != "INCONNU"])
   }
   
   score <- score %>% 
-    .[, ratio := ratio / correctif_ratio] %>% 
+    .[, ratio := ratio * correctif_ratio] %>% 
     .[,score_pondere := ratio * score]
   sum(score$score_pondere, na.rm = TRUE)
 })

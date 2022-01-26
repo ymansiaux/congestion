@@ -17,6 +17,7 @@ usethis::use_vignette("designApp")
 
 
 
+attachment::att_amend_desc(dir.v = "")
 vignette <- FALSE
 devtools::check(document = TRUE, vignettes = vignette)
 devtools::build(vignettes = vignette)

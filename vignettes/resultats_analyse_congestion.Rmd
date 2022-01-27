@@ -490,10 +490,6 @@ plot_capteurs_journalier / (plot_capteurs_HPM | plot_capteurs_HPS)
 
 ## Analyse des temps de trajet
 
-```{r recupDataTempsParcours, cache = TRUE}
-temps_parcours_geo <- read_sf("/data/donnees_geo/CI_TRAFI_L/temps_trajet.json")
-```
-
 ```{r cleanDataTempsParcours}
 temps_parcours_DT <- copy(congestion::temps_parcours_dt) %>% 
   .[, time := lubridate::as_datetime(time, tz = "Europe/Paris")] %>% 

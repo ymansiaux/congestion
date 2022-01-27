@@ -93,11 +93,11 @@ usethis::use_data(congestion_cleaned, overwrite = TRUE)
 
 # recherche de bug
 # congestion_from_sept2019_dt[gid == 1305 & as_date(as_datetime(time, tz = "Europe/Paris")) == as_date("2021-12-20")]
-GID 1305
-2021-12-20 à 8h
-library(xtradata)
-library(data.table)
-library(purrr)
-library(lubridate)
-
-a <- map(as.list(0:1), ~histo_long_congestion_possibly(nweeks_to_add = .x, startDate = "2021-12-20", scores_referentiels = scores_referentiels, filter = list("gid" = 1305)))
+# GID 1305
+# 2021-12-20 à 8h
+# library(xtradata)
+# library(data.table)
+# library(purrr)
+# library(lubridate)
+# 
+# a <- map(as.list(0:1), ~histo_long_congestion_possibly(nweeks_to_add = .x, startDate = "2021-12-20", scores_referentiels = scores_referentiels, filter = list("gid" = 1305)))

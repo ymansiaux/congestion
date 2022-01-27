@@ -560,6 +560,6 @@ plot_evolution_congestion2 <- function(data, var_x, var_y, xlab, ylab, title, su
 
 plot_evolution_congestion2(data = temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000], var_x = time, var_y = ecart_actuel_ref, xlab = "Date", ylab = "Ecart actuel / ref (%)",
                           title = "titi", subtitle = "", font = my_font, pal = pal)
-temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000], aes(x = time, y = ecart_actuel_ref)
+temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000]
 ```
 

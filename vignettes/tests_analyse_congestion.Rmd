@@ -1,0 +1,565 @@
+---
+title: "Untitled"
+author: "YM"
+date: "11/01/2022"
+output: html_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(datatable.print.class = TRUE)
+options(bitmapType='cairo')
+```
+
+```{r setup}
+library(congestion)
+library(xtradata)
+library(sf)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(lubridate)
+library(ggtext)
+library(ggforce)
+library(scales)
+library(showtext)
+library(ggrepel)
+library(patchwork)
+```
+
+# Palette
+
+```{r}
+pal <- theme_macarons_palette()
+
+my_font <- "Playfair Display"
+```
+
+
+# Time Series du niveau de congestion moyen
+
+```{r}
+congestion_cleaned <- copy(congestion::congestion_from_sept2019_dt) %>% 
+  .[scores_horaires_ponderes >3, scores_horaires_ponderes := 3] %>% 
+  .[scores_horaires_ponderes == 0, scores_horaires_ponderes := NA] %>% 
+  .[scores_horaires_ponderes <1, scores_horaires_ponderes := 1] %>% 
+  .[, time := lubridate::as_datetime(time, tz = "Europe/Paris")] %>% 
+  .[, date := lubridate::as_date(time)] %>% 
+  .[, hour := data.table::hour(time)] %>% 
+  .[, day := data.table::wday(time)] %>% 
+  .[, HPM := hour %in% 7:9] %>% 
+  .[, HPS := hour %in% 17:19] %>% 
+  .[, JO := day %in% 2:6]
+
+congestion_journaliere <- copy(congestion_cleaned) %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+
+```
+
+
+```{r}
+plot_evolution_congestion <- function(data, title, subtitle, font, pal) {
+  
+  miniJ <- min(data$score)
+  maxiJ <- max(data$score)
+  
+  g <- ggplot(data, aes(x = date, y = score)) +
+    geom_line(alpha = .6, color = pal[1]) +
+    geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+    labs(x = "Date", y = "Score de congestion",
+         title = title,
+         subtitle = subtitle) +
+    
+    theme_macarons(my_font = font) +
+    
+    annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    
+    geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ, label = label), angle = -90, hjust = 0,
+                  fill = NA, label.color = NA, family = font) +
+    
+    coord_cartesian(ylim = c(miniJ,maxiJ)) +
+    
+    geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+                  mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = font)
+  
+  for(i in 1:nrow(confinements)) {
+    
+    g <- g +
+      
+      annotate("rect", xmin = as.Date(confinements$deb[i]), xmax = as.Date(confinements$fin[i]), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4])
+    
+  }
+  g
+}
+
+
+```
+
+```{r}
+plot_journalier <- plot_evolution_congestion(data = congestion_journaliere, 
+                                             title = "Evolution score de congestion (Journée complète)", 
+                                             subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                             font = my_font, 
+                                             pal = pal)
+
+```
+
+
+# HPM
+
+```{r}
+congestion_HPM <- copy(congestion_cleaned) %>% 
+  .[HPM == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+```{r}
+plot_HPM <- plot_evolution_congestion(data = congestion_HPM,
+                                      title = "Evolution score de congestion (HPM)",
+                                      subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                      font = my_font,
+                                      pal = pal)
+```
+
+
+# HPS
+
+```{r}
+congestion_HPS <- copy(congestion_cleaned) %>% 
+  .[HPS == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+```{r}
+plot_HPS <- plot_evolution_congestion(data = congestion_HPS,
+                                      title = "Evolution score de congestion (HPS)",
+                                      subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                      font = my_font, 
+                                      pal = pal)
+```
+
+# faire un seul graphe
+
+```{r}
+plot_journalier / (plot_HPM | plot_HPS)
+```
+
+# Faire un écart à la référence : choisir une semaine de référence (1ere semaine de janvier 2020)
+
+```{r}
+semaine_ref <- c(as_date("2020-01-06"), as_date("2020-01-06") + days(7))
+
+evolution_semaine_ref <- function(data, semaine_ref) {
+  
+  congestion_semaine_ref <- data[date >= semaine_ref[1] & date < semaine_ref[2]] %>% 
+    .[, day := data.table::wday(date)] 
+  
+  congestion_journaliere_start_semaine_ref <- data[date >= semaine_ref[1]] %>% 
+    .[, day := data.table::wday(date)] 
+  
+  merge(congestion_journaliere_start_semaine_ref, congestion_semaine_ref[, c("score", "day")], by = "day") %>% 
+    .[, score := 100 * (score.x / score.y)] %>% 
+    .[order(date)]
+  
+}
+
+comparaison_journaliere_ref <- evolution_semaine_ref(data = congestion_journaliere, semaine_ref = semaine_ref)
+comparaison_HPM_ref <- evolution_semaine_ref(data = congestion_HPM, semaine_ref = semaine_ref)
+comparaison_HPS_ref <- evolution_semaine_ref(data = congestion_HPS, semaine_ref = semaine_ref)
+
+plot_evolution_relative_congestion_journalier <- plot_evolution_congestion(data = comparaison_journaliere_ref,
+                                                                           title = "Evolution relative congestion (%) (Journée complète)",
+                                                                           subtitle = "Semaine de référence : 06-13/01/2020",
+                                                                           font = my_font, 
+                                                                           pal = pal)
+
+
+plot_evolution_relative_congestion_HPM <- plot_evolution_congestion(data = comparaison_HPM_ref,
+                                                                    title = "Evolution relative congestion (%) (HPM)",
+                                                                    subtitle = "Semaine de référence : 06-13/01/2020",
+                                                                    font = my_font, 
+                                                                    pal = pal)
+
+plot_evolution_relative_congestion_HPS <- plot_evolution_congestion(data = comparaison_HPS_ref,
+                                                                    title = "Evolution relative congestion (%) (HPS)",
+                                                                    subtitle = "Semaine de référence : 06-13/01/2020",
+                                                                    font = my_font, 
+                                                                    pal = pal)
+
+
+
+```
+
+# faire un seul graphe
+
+```{r}
+plot_evolution_relative_congestion_journalier / (plot_evolution_relative_congestion_HPM | plot_evolution_relative_congestion_HPS)
+```
+
+
+
+# Faire un graphe semblable avec les compteurs
+# Voir les temps de parcours
+
+
+
+# CARTO
+
+## Dessin des tronçons
+
+```{r}
+troncons <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "CI_TRAFI_L", backintime = "2020-03-20T08:00:00")
+
+```
+
+
+```{r}
+
+theme_map <- function(my_font) {
+  
+  bg_color <- "white"
+  font_add_google(name = my_font, family = my_font)
+  showtext_auto()
+  
+  title_color <- "#008acd"
+  subtitle_color <- "#aaaaaa"
+  axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
+  axis_text_color <- axis_tick_color
+  theme(text = element_text(family = my_font),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = margin(20, 20, 20, 20),
+        plot.background = element_rect(fill = bg_color, color =  bg_color),
+        panel.background = element_rect(fill = bg_color, color =  bg_color),
+        plot.title = element_text(color = title_color, size = 18, family = my_font),
+        plot.subtitle = element_markdown(color = subtitle_color, size = 13),
+        plot.title.position = "plot",
+        plot.caption.position = "plot")
+}
+```
+## Carte moyenne journalière J ouvres 1 mois avant confinement 1 
+
+```{r}
+
+confinement1 <- confinements[1,]
+
+congestion_1mois_avant_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$deb, -months(1)) & date < add_with_rollback(confinement1$deb, -months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% 7:20] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+
+congestion_pendant_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$deb, months(1)) & date < add_with_rollback(confinement1$deb, months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% 7:20] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+congestion_1mois_apres_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$fin, months(1)) & date < add_with_rollback(confinement1$fin, months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% 7:20] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+
+```
+
+```{r}
+troncons_1mois_avant_confinement <- inner_join(troncons, congestion_1mois_avant_confinement, by = "gid" )
+troncons_pendant_confinement <- inner_join(troncons, congestion_pendant_confinement, by = "gid" )
+troncons_1mois_apres_confinement <- inner_join(troncons, congestion_1mois_apres_confinement, by = "gid" )
+```
+
+
+```{r}
+crs <- st_crs(troncons)
+
+eau <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "to_hydro_s")
+garonne <- dplyr::filter(eau, typea == "FLEUVE")
+limites_communes <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "to_liadm_l")
+filaire <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "fv_tronc_l")
+
+```
+
+
+```{r}
+
+map_preconfinement <- ggplot() +
+  
+  geom_sf(data = troncons_1mois_avant_confinement, aes(color = score), lwd = 1.5) +
+  
+  scale_color_gradient2(midpoint = 2, low = "#2E7F18", mid = "yellow", high = "#C82538") +
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font)
+
+```
+
+
+```{r}
+map_confinement <- ggplot() +
+  
+  geom_sf(data = troncons_pendant_confinement, aes(color = score), lwd = 1.5) +
+  
+  scale_color_gradient2(midpoint = 2, low = "#2E7F18", mid = "yellow", high = "#C82538") +
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font)
+
+```
+
+
+```{r}
+map_postconfinement <- ggplot() +
+  
+  geom_sf(data = troncons_1mois_apres_confinement, aes(color = score), lwd = 1.5) +
+  
+  scale_color_gradient2(midpoint = 2, low = "#2E7F18", mid = "yellow", high = "#C82538") +
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font)
+
+```
+
+
+```{r}
+map_preconfinement | map_confinement | map_postconfinement
+```
+
+
+## On va essayer de faire un gif des 3 cartes (et pour les 3 confinements)
+
+```{r}
+# library(gganimate)
+# 
+# troncons_3 <- bind_rows(
+#   troncons_1mois_avant_confinement %>% mutate(periode = "1-preconfinement"),
+#   troncons_pendant_confinement %>% mutate(periode = "2-confinement"),
+#   troncons_1mois_apres_confinement %>% mutate(periode = "3-postconfinement")
+# )
+# 
+# 
+# p <- ggplot() +
+#   
+#   geom_sf(data = troncons_3, aes(color = score), lwd = 1.5) +
+#   
+#   scale_color_gradient2(midpoint = 2, low = "#2E7F18", mid = "yellow", high = "#C82538") +
+#   
+#   geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+#   
+#   geom_sf(data = garonne, fill = "#ccddef",  
+#           color = "#ccddef", alpha = .5)  +
+#   
+#   geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+#   
+#   theme_map(my_font = "Playfair Display")
+# 
+# anim <- p + 
+#   transition_states(periode,
+#                     transition_length = 2,
+#                     state_length = 1)
+# 
+# index_anim <- 
+#   animate(anim, nframes = 150, 
+#           fps = 5, detail = 5, end_pause = 25,
+#           width = 1150, height = 740, 
+#           device = "png", type = "cairo",  renderer = gifski_renderer())
+# 
+# anim_save(filename = here::here("2020_52_BigMacIndex.gif"), animation = index_anim)
+
+# https://raw.githubusercontent.com/Z3tt/TidyTuesday/master/plots/2020_52/2020_52_BigMacIndex.gif
+# https://github.com/z3tt/TidyTuesday/blob/master/R/2020_52_BigMacIndex.Rmd
+# https://gganimate.com/articles/gganimate.html
+```
+
+# Analyse des capteurs
+
+```{r}
+# xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), 
+#                           typename = "PC_CAPTE_P",
+#                           backintime = "2020-11-04T00:00:00"
+# )
+capteurs <- xtradata_requete_aggregate(key = Sys.getenv("XTRADATA_KEY"), 
+                                       typename = "PC_CAPTE_P", 
+                                       rangeStart = "2020-11-05", 
+                                       rangeEnd = Sys.Date()-1,
+                                       attributes = list("comptage_5m" = "sum"),
+                                       group="time")
+
+capteurs <- capteurs %>% 
+  as.data.table() %>% 
+  .[, time := lubridate::as_datetime(time, tz = "Europe/Paris")] %>% 
+  .[, date := lubridate::as_date(time)] %>% 
+  .[, hour := data.table::hour(time)] %>% 
+  .[, day := data.table::wday(time)] %>% 
+  .[, HPM := hour %in% 7:9] %>% 
+  .[, HPS := hour %in% 17:19] %>% 
+  .[, JO := day %in% 2:6]
+
+
+```
+
+```{r}
+plot_evolution_capteurs <- function(data, title, subtitle, font, pal) {
+  
+  confinements_filtered <- confinements[confinements$fin >  min(data$date),]
+  
+  miniJ <- min(data$comptage_5m)
+  maxiJ <- max(data$comptage_5m)
+  
+  g <- ggplot(data, aes(x = date, y = comptage_5m)) +
+    geom_line(alpha = .6, color = pal[1]) +
+    geom_smooth(se = FALSE, color = pal[3]) +
+    labs(x = "Date", y = "Somme des capteurs auto",
+         title = title,
+         subtitle = subtitle) +
+    
+    theme_macarons(my_font = font) +
+    
+    annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    
+    geom_richtext(data = confinements_filtered, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ, label = label), angle = -90, hjust = 0,
+                  fill = NA, label.color = NA, family = font) +
+    
+    coord_cartesian(ylim = c(miniJ,maxiJ)) +
+    
+    geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+                  mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = font)
+  
+  for(i in 1:nrow(confinements_filtered)) {
+    
+    g <- g +
+      
+      annotate("rect", xmin = as.Date(confinements_filtered$deb[i]), xmax = as.Date(confinements_filtered$fin[i]), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4])
+    
+  }
+  g
+}
+```
+
+
+
+```{r}
+capteurs_journaliers <- capteurs %>% 
+  .[, .(comptage_5m = sum(comptage_5m, na.rm = TRUE)), by = date]
+
+capteurs_HPM_HPS <- capteurs %>% 
+  .[, .(comptage_5m = sum(comptage_5m, na.rm = TRUE)), by = list(date, HPM, HPS)]
+
+plot_evolution_capteurs(data = capteurs_journaliers, title = "Evolution de la somme des capteurs auto (Journée complète)", subtitle = "", font = my_font, pal = pal)
+
+plot_evolution_capteurs(data = capteurs_HPM_HPS[HPM == TRUE], title = "Evolution de la somme des capteurs auto (HPM)", subtitle = "", font = my_font, pal = pal)
+
+plot_evolution_capteurs(data = capteurs_HPM_HPS[HPS == TRUE], title = "Evolution de la somme des capteurs auto (HPS)", subtitle = "", font = my_font, pal = pal)
+
+
+
+congestion_HPM <- copy(congestion_cleaned) %>% 
+  .[HPM == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+
+# Temps de parcours : étude d'un écart à la référence
+
+```{r}
+temps_parcours_geo <- read_sf("/data/donnees_geo/CI_TRAFI_L/temps_trajet.json")
+
+temps_parcours_stats <- xtradata_requete_aggregate(
+  key = Sys.getenv("XTRADATA_KEY"), 
+  typename = "CI_TPSTJ_A",
+  rangeStart = "2020-05-01",
+  rangeEnd = Sys.Date()-1,
+  rangeStep = "hour",
+  attributes = list("actuel"="average", "ref"="average")
+)
+
+# xtradata_requete_features(
+#   key = Sys.getenv("XTRADATA_KEY"), 
+#   typename = "CI_TPSTJ_A",
+#   backintime = "2020-04-05T10:00:00"
+# )
+
+temps_parcours_DT <- as.data.table(temps_parcours_stats) %>% 
+  .[, time := as_datetime(time, tz = "Europe/Paris")] %>% 
+  .[, ecart_actuel_ref := (100 * actuel / ref)]
+
+temps_parcours_hourly <- copy(temps_parcours_DT) %>% 
+  .[ecart_actuel_ref != Inf] %>% 
+  .[, .(ecart_actuel_ref = mean(ecart_actuel_ref)), by = time]
+```
+
+```{r}
+ggplot(temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000], aes(x = time, y = ecart_actuel_ref)) +
+  geom_line()
+```
+
+```{r}
+plot_evolution_congestion2 <- function(data, var_x, var_y, xlab, ylab, title, subtitle, font, pal) {
+  
+  print(data[, .SD, .SDcols = as.name(var_x)])
+  
+  browser()
+  miniJ <- min(data$score)
+  maxiJ <- max(data$score)
+  
+  g <- ggplot(data, aes(x = date, y = score)) +
+    geom_line(alpha = .6, color = pal[1]) +
+    geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+    labs(x = "Date", y = "Score de congestion",
+         title = title,
+         subtitle = subtitle) +
+    
+    theme_macarons(my_font = font) +
+    
+    annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    
+    geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ, label = label), angle = -90, hjust = 0,
+                  fill = NA, label.color = NA, family = font) +
+    
+    coord_cartesian(ylim = c(miniJ,maxiJ)) +
+    
+    geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+                  mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = font)
+  
+  for(i in 1:nrow(confinements)) {
+    
+    g <- g +
+      
+      annotate("rect", xmin = as.Date(confinements$deb[i]), xmax = as.Date(confinements$fin[i]), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4])
+    
+  }
+  g
+}
+
+plot_evolution_congestion2(data = temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000], var_x = time, var_y = ecart_actuel_ref, xlab = "Date", ylab = "Ecart actuel / ref (%)",
+                          title = "titi", subtitle = "", font = my_font, pal = pal)
+temps_parcours_hourly[ecart_actuel_ref>1000, ecart_actuel_ref := 1000]
+```
+

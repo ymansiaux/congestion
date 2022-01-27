@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   echo = FALSE,
   message = FALSE,
+  cache = FALSE,
   comment = "#>"
 )
 options(datatable.print.class = TRUE)
@@ -53,7 +54,7 @@ my_font <- "Playfair Display"
 
 ## Analyse du niveau de congestion à partir du traficolor
 
-```{r traficolorCleaning, message=FALSE, cache=TRUE}
+```{r traficolorCleaning, message=FALSE}
 congestion_journaliere <- copy(congestion_cleaned) %>% 
   .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
 
@@ -234,7 +235,7 @@ Analyse carto
 -->
 
 
-```{r traceDesTroconsTraficolor, cache=TRUE}
+```{r traceDesTroconsTraficolor}
 troncons <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "CI_TRAFI_L", backintime = "2020-03-20T08:00:00")
 
 ```
@@ -292,14 +293,14 @@ congestion_1mois_apres_confinement <- copy(congestion_cleaned) %>%
 
 ```
 
-```{r jointureTronconsCongestion, cache = TRUE}
+```{r jointureTronconsCongestion}
 troncons_1mois_avant_confinement <- inner_join(troncons, congestion_1mois_avant_confinement, by = "gid" )
 troncons_pendant_confinement <- inner_join(troncons, congestion_pendant_confinement, by = "gid" )
 troncons_1mois_apres_confinement <- inner_join(troncons, congestion_1mois_apres_confinement, by = "gid" )
 ```
 
 
-```{r ajoutFeaturesMap, cache=TRUE}
+```{r ajoutFeaturesMap}
 crs <- st_crs(troncons)
 
 eau <- xtradata_requete_features(key = Sys.getenv("XTRADATA_KEY"), typename = "to_hydro_s")
@@ -403,7 +404,7 @@ map_postconfinement
 
 ## Analyse des capteurs
 
-```{r cleanDataCapteurs, message = FALSE, cache = TRUE}
+```{r cleanDataCapteurs, message = FALSE}
 capteurs <- xtradata_requete_aggregate(key = Sys.getenv("XTRADATA_KEY"), 
                                        typename = "PC_CAPTE_P", 
                                        rangeStart = "2020-11-05", 

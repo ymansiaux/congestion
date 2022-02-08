@@ -1,0 +1,220 @@
+---
+title: |
+  ![](`r system.file("logo", "datalab-logo-lightmode.png", package = "bdxmetroidentity")`){width=250px style="display: block; margin-bottom: 50px"}
+  Analyse trafic BM
+author: "`r emo::ji('coder')` Yohann Mansiaux"
+date: "`r emo::ji('calendar')` `r Sys.Date()`"
+output:
+  bdxmetroidentity::html_document_bdxmetro:
+    toc: false
+    toc_depth: 3
+    theme: "light"
+    code_folding: "none"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  echo = FALSE,
+  message = FALSE,
+  cache = FALSE,
+  comment = "#>"
+)
+options(datatable.print.class = TRUE)
+options(bitmapType='cairo')
+```
+
+```{r setup, message=FALSE}
+library(congestion)
+library(xtradata)
+library(sf)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(lubridate)
+library(ggtext)
+library(ggforce)
+library(scales)
+library(showtext)
+library(ggrepel)
+library(patchwork)
+library(codetools)
+```
+
+<!---
+Palette de couleurs et police
+-->
+
+```{r paletteAndFont}
+pal <- theme_macarons_palette()
+
+my_font <- "Playfair Display"
+```
+
+
+```{r}
+theme_macarons2 <- function(my_font) {
+  # inspiré du style macarons de echarts
+  # https://echarts.apache.org/en/theme-builder.html
+  
+  bg_color <- "white"
+  
+  font_add_google(name = my_font, family = my_font)
+  showtext_auto()
+  
+  title_color <- "#008acd"
+  subtitle_color <- "#aaaaaa"
+  axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
+  axis_text_color <- axis_tick_color
+  
+  theme(text = element_text(family = my_font),
+        axis.title = element_blank(),
+        axis.text = element_text(color = axis_text_color),
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
+        axis.ticks = element_line(color = subtitle_color, size = .5),
+        axis.ticks.length.x = unit(.7, "lines"),
+        axis.ticks.length.y = unit(.7, "lines"),
+        panel.grid = element_blank(),
+        plot.margin = margin(20, 0, 20, 0),
+        plot.background = element_rect(fill = bg_color, color =  bg_color),
+        panel.background = element_rect(fill = bg_color, color =  bg_color),
+        plot.title = element_text(color = title_color, size = 18, family = my_font),
+        plot.subtitle = element_markdown(color = subtitle_color, size = 13),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        legend.position = "none")
+  
+  
+}
+```
+
+
+
+## Analyse du niveau de congestion à partir du traficolor
+
+```{r traficolorCleaning, message=FALSE}
+congestion_journaliere <- copy(congestion_cleaned) %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+
+```
+<!---
+Fonction ggplot ppur tracer l'évolution de la congestion
+-->
+
+
+```{r functionPlotCongestion}
+plot_evolution_congestion <- function(data, title, subtitle, font, pal, miniY, maxiY) {
+  
+  # miniJ <- min(data$score)
+  # maxiJ <- max(data$score)
+  # miniJ <- 1
+  # maxiJ <- 1.4
+  
+  g <- ggplot(data, aes(x = date, y = score)) +
+    geom_line(alpha = .6, color = pal[1]) +
+    geom_smooth(method = "gam", se = FALSE, color = pal[3]) +
+    labs(x = "Date", y = "Score de congestion",
+         title = title,
+         subtitle = subtitle) +
+    
+    theme_macarons2(my_font = font) +
+    
+    # annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    
+    geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiY, label = label), angle = -90, hjust = 0,
+                  fill = NA, label.color = NA, family = font, size = 4) +
+    
+    coord_cartesian(ylim = c(miniY,maxiY)) #+
+  
+  # geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+  #               mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], 
+  #               family = font, size = 4)
+  
+  for(i in 1:nrow(confinements)) {
+    
+    g <- g +
+      
+      annotate("rect", xmin = as.Date(confinements$deb[i]), xmax = as.Date(confinements$fin[i]), ymin = miniY, ymax = maxiY, alpha = .25, fill = pal[4])
+    
+  }
+  g
+}
+
+
+```
+
+
+<!---
+A la journée
+-->
+
+```{r plotJournalierCongestion}
+plot_journalier <- plot_evolution_congestion(data = congestion_journaliere, 
+                                             title = "Evolution score de congestion (Journée complète)", 
+                                             subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                             font = my_font, 
+                                             pal = pal,
+                                             miniY = 1,
+                                             maxiY = 1.4)
+
+```
+
+
+<!---
+HPM
+-->
+
+```{r calculCongestionHPM}
+congestion_HPM <- copy(congestion_cleaned) %>% 
+  .[HPM == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+```{r plotHPMCongestion}
+plot_HPM <- plot_evolution_congestion(data = congestion_HPM,
+                                      title = "",
+                                      subtitle = "HPM",
+                                      font = my_font,
+                                      pal = pal,
+                                      miniY = 1,
+                                      maxiY = 1.4)
+```
+
+
+<!---
+HPS
+-->
+
+```{r calculCongestionHPS}
+congestion_HPS <- copy(congestion_cleaned) %>% 
+  .[HPS == TRUE] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = date]
+```
+
+
+```{r plotHPSCongestion}
+plot_HPS <- plot_evolution_congestion(data = congestion_HPS,
+                                      title = "",
+                                      subtitle = "HPS",
+                                      font = my_font, 
+                                      pal = pal,
+                                      miniY = 1,
+                                      maxiY = 1.4)
+```
+
+<!---
+Fusion des graphes
+-->
+
+On se propose de calculer un score de congestion journalier moyen, entre 1 et 3. 
+
+Le score est calculé sur la journée entière, sur les heures pleines du matin (7h-9h) et sur les heures pleines du soir (17h-19h).
+
+On représente son évolution depuis 09/2019.
+
+
+```{r plotFinalCongestion, fig.width=10, fig.height=11}
+plot_journalier / (plot_HPM | plot_HPS)
+```

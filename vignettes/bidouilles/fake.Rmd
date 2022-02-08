@@ -1,32 +1,57 @@
-#' Génération d'un thème macarons ggplot2
-#'
-#' @param my_font police google font à utiliser
-#'
-#' @return
-#' @export
-#' @importFrom showtext showtext_auto
-#' @importFrom sysfonts font_add_google
-#' @import ggplot2
-#' @examples
-theme_macarons <- function(my_font) {
+---
+title: "Fake"
+author: "Yohann Mansiaux"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  echo = FALSE,
+  message = FALSE,
+  cache = FALSE,
+  comment = "#>"
+)
+options(datatable.print.class = TRUE)
+options(bitmapType='cairo')
+```
+
+```{r setup, message=FALSE}
+library(ggplot2)
+library(ggtext)
+library(showtext)
+```
+
+<!---
+Palette de couleurs et police
+-->
+
+```{r paletteAndFont}
+my_font <- "Playfair Display"
+```
+
+
+```{r}
+theme_macarons2 <- function(my_font) {
   # inspiré du style macarons de echarts
   # https://echarts.apache.org/en/theme-builder.html
   
   bg_color <- "white"
   
   font_add_google(name = my_font, family = my_font)
-  # showtext_auto()
+  showtext_auto()
   
   title_color <- "#008acd"
   subtitle_color <- "#aaaaaa"
   axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
   axis_text_color <- axis_tick_color
   
-  theme(text = element_text(family = my_font, size = 18),
+  theme(text = element_text(family = my_font),
         axis.title = element_blank(),
         axis.text = element_text(color = axis_text_color),
-        axis.text.x = element_text(size = 10),
-        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_text(size = 11),
         axis.ticks = element_line(color = subtitle_color, size = .5),
         axis.ticks.length.x = unit(.7, "lines"),
         axis.ticks.length.y = unit(.7, "lines"),
@@ -35,10 +60,19 @@ theme_macarons <- function(my_font) {
         plot.background = element_rect(fill = bg_color, color =  bg_color),
         panel.background = element_rect(fill = bg_color, color =  bg_color),
         plot.title = element_text(color = title_color, size = 18, family = my_font),
-        plot.subtitle = element_markdown(color = subtitle_color, size = 14),
+        plot.subtitle = element_markdown(color = subtitle_color, size = 13),
         plot.title.position = "plot",
         plot.caption.position = "plot",
         legend.position = "none")
   
   
 }
+```
+
+
+```{r fig.width=10, fig.height=11}
+ggplot(iris, aes(Sepal.Length, Sepal.Width)) +
+  geom_point() +
+  labs(title = "Coucou", subtitle = "Youpi") +
+    theme_macarons2(my_font = my_font)
+```

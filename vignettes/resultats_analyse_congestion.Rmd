@@ -52,6 +52,45 @@ my_font <- "Playfair Display"
 ```
 
 
+```{r}
+# theme_macarons2 <- function(my_font) {
+#   # inspiré du style macarons de echarts
+#   # https://echarts.apache.org/en/theme-builder.html
+#   
+#   bg_color <- "white"
+#   
+#   font_add_google(name = my_font, family = my_font)
+#   showtext_auto()
+#   
+#   title_color <- "#008acd"
+#   subtitle_color <- "#aaaaaa"
+#   axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
+#   axis_text_color <- axis_tick_color
+#   
+#   theme(text = element_text(family = my_font),
+#         axis.title = element_blank(),
+#         axis.text = element_text(color = axis_text_color),
+#         axis.text.x = element_text(size = 11),
+#         axis.text.y = element_text(size = 11),
+#         axis.ticks = element_line(color = subtitle_color, size = .5),
+#         axis.ticks.length.x = unit(.7, "lines"),
+#         axis.ticks.length.y = unit(.7, "lines"),
+#         panel.grid = element_blank(),
+#         plot.margin = margin(20, 0, 20, 0),
+#         plot.background = element_rect(fill = bg_color, color =  bg_color),
+#         panel.background = element_rect(fill = bg_color, color =  bg_color),
+#         plot.title = element_text(color = title_color, size = 18, family = my_font),
+#         plot.subtitle = element_markdown(color = subtitle_color, size = 13),
+#         plot.title.position = "plot",
+#         plot.caption.position = "plot",
+#         legend.position = "none")
+#   
+#   
+# }
+```
+
+
+
 ## Analyse du niveau de congestion à partir du traficolor
 
 ```{r traficolorCleaning, message=FALSE}
@@ -65,10 +104,12 @@ Fonction ggplot ppur tracer l'évolution de la congestion
 
 
 ```{r functionPlotCongestion}
-plot_evolution_congestion <- function(data, title, subtitle, font, pal) {
+plot_evolution_congestion <- function(data, title, subtitle, font, pal, miniY, maxiY) {
   
-  miniJ <- min(data$score)
-  maxiJ <- max(data$score)
+  # miniJ <- min(data$score)
+  # maxiJ <- max(data$score)
+  # miniJ <- 1
+  # maxiJ <- 1.4
   
   g <- ggplot(data, aes(x = date, y = score)) +
     geom_line(alpha = .6, color = pal[1]) +
@@ -79,22 +120,22 @@ plot_evolution_congestion <- function(data, title, subtitle, font, pal) {
     
     theme_macarons(my_font = font) +
     
-    annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    # annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
     
-    geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ, label = label), angle = -90, hjust = 0,
-                  fill = NA, label.color = NA, family = font, size = 6) +
+    geom_richtext(data = confinements, mapping = aes(x = fin - ((fin-deb)/2), y = maxiY, label = label), angle = -90, hjust = 0,
+                  fill = NA, label.color = NA, family = font, size = 4) +
     
-    coord_cartesian(ylim = c(miniJ,maxiJ)) +
-    
-    geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
-                  mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], 
-                  family = font, size = 6)
+    coord_cartesian(ylim = c(miniY,maxiY)) #+
+  
+  # geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+  #               mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], 
+  #               family = font, size = 4)
   
   for(i in 1:nrow(confinements)) {
     
     g <- g +
       
-      annotate("rect", xmin = as.Date(confinements$deb[i]), xmax = as.Date(confinements$fin[i]), ymin = miniJ, ymax = maxiJ, alpha = .25, fill = pal[4])
+      annotate("rect", xmin = as.Date(confinements$deb[i]), xmax = as.Date(confinements$fin[i]), ymin = miniY, ymax = maxiY, alpha = .25, fill = pal[4])
     
   }
   g
@@ -113,7 +154,9 @@ plot_journalier <- plot_evolution_congestion(data = congestion_journaliere,
                                              title = "Evolution score de congestion (Journée complète)", 
                                              subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
                                              font = my_font, 
-                                             pal = pal)
+                                             pal = pal,
+                                             miniY = 1,
+                                             maxiY = 1.4)
 
 ```
 
@@ -131,10 +174,12 @@ congestion_HPM <- copy(congestion_cleaned) %>%
 
 ```{r plotHPMCongestion}
 plot_HPM <- plot_evolution_congestion(data = congestion_HPM,
-                                      title = "Evolution score de congestion (HPM)",
-                                      subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                      title = "",
+                                      subtitle = "HPM",
                                       font = my_font,
-                                      pal = pal)
+                                      pal = pal,
+                                      miniY = 1,
+                                      maxiY = 1.4)
 ```
 
 
@@ -151,10 +196,12 @@ congestion_HPS <- copy(congestion_cleaned) %>%
 
 ```{r plotHPSCongestion}
 plot_HPS <- plot_evolution_congestion(data = congestion_HPS,
-                                      title = "Evolution score de congestion (HPS)",
-                                      subtitle = "Fluide (1) - Dense (2) - Embouteillé (3)",
+                                      title = "",
+                                      subtitle = "HPS",
                                       font = my_font, 
-                                      pal = pal)
+                                      pal = pal,
+                                      miniY = 1,
+                                      maxiY = 1.4)
 ```
 
 <!---
@@ -168,7 +215,7 @@ Le score est calculé sur la journée entière, sur les heures pleines du matin 
 On représente son évolution depuis 09/2019.
 
 
-```{r plotFinalCongestion, fig.width=10, fig.height=11}
+```{r plotFinalCongestion, fig.width=10, fig.height=11, fig.showtext=TRUE}
 plot_journalier / (plot_HPM | plot_HPS)
 ```
 
@@ -202,20 +249,26 @@ plot_evolution_relative_congestion_journalier <- plot_evolution_congestion(data 
                                                                            title = "Evolution relative congestion (%) (Journée complète)",
                                                                            subtitle = "Semaine de référence : 06-13/01/2020",
                                                                            font = my_font, 
-                                                                           pal = pal)
+                                                                           pal = pal,
+                                                                           miniY = 80,
+                                                                           maxiY = 130)
 
 
 plot_evolution_relative_congestion_HPM <- plot_evolution_congestion(data = comparaison_HPM_ref,
-                                                                    title = "Evolution relative congestion (%) (HPM)",
-                                                                    subtitle = "Semaine de référence : 06-13/01/2020",
+                                                                    title = "",
+                                                                    subtitle = "HPM",
                                                                     font = my_font, 
-                                                                    pal = pal)
+                                                                    pal = pal,
+                                                                    miniY = 80,
+                                                                    maxiY = 130)
 
 plot_evolution_relative_congestion_HPS <- plot_evolution_congestion(data = comparaison_HPS_ref,
-                                                                    title = "Evolution relative congestion (%) (HPS)",
-                                                                    subtitle = "Semaine de référence : 06-13/01/2020",
+                                                                    title = "",
+                                                                    subtitle = "HPS",
                                                                     font = my_font, 
-                                                                    pal = pal)
+                                                                    pal = pal,
+                                                                    miniY = 80,
+                                                                    maxiY = 130)
 
 
 
@@ -225,7 +278,7 @@ plot_evolution_relative_congestion_HPS <- plot_evolution_congestion(data = compa
 Fusion des graphes
 -->
 
-```{r plotFinalCongestionEvolutionSemaineRef, fig.width=10, fig.height=11}
+```{r plotFinalCongestionEvolutionSemaineRef, fig.width=10, fig.height=11, fig.showtext=TRUE}
 plot_evolution_relative_congestion_journalier / (plot_evolution_relative_congestion_HPM | plot_evolution_relative_congestion_HPS)
 ```
 
@@ -246,13 +299,14 @@ theme_map <- function(my_font) {
   
   bg_color <- "white"
   font_add_google(name = my_font, family = my_font)
-  showtext_auto()
+  # showtext_auto()
   
   title_color <- "#008acd"
   subtitle_color <- "#aaaaaa"
   axis_tick_color <- rgb(51, 51, 51, maxColorValue = 255)
   axis_text_color <- axis_tick_color
-  theme(text = element_text(family = my_font, size = 22),
+  
+  theme(text = element_text(family = my_font),
         axis.title = element_blank(),
         axis.text = element_blank(),
         axis.text.x = element_blank(),
@@ -262,10 +316,11 @@ theme_map <- function(my_font) {
         plot.margin = margin(20, 0, 20, 0),
         plot.background = element_rect(fill = bg_color, color =  bg_color),
         panel.background = element_rect(fill = bg_color, color =  bg_color),
-        plot.title = element_text(color = title_color, size = 30, family = my_font),
-        plot.subtitle = element_markdown(color = subtitle_color, size = 22),
+        plot.title = element_text(color = title_color, size = 18, family = my_font),
+        plot.subtitle = element_markdown(color = subtitle_color, size = 13),
         plot.title.position = "plot",
         plot.caption.position = "plot")
+  
   
 }
 ```
@@ -289,7 +344,6 @@ congestion_1mois_apres_confinement <- copy(congestion_cleaned) %>%
   .[date >= add_with_rollback(confinement1$fin, months(1)) & date < add_with_rollback(confinement1$fin, months(1)+weeks(1))] %>% 
   .[JO == TRUE & hour %in% 7:20] %>% 
   .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
-
 
 ```
 
@@ -337,7 +391,7 @@ map_preconfinement <- ggplot() +
   
   theme_map(my_font = my_font) +
   
-  labs(subtitle = "1 mois pré-confinement")
+  labs(title = "heures d'analyses : 7h-20h (jours ouvrés)", subtitle = "1 mois pré-confinement")
 
 ```
 
@@ -348,8 +402,8 @@ map_confinement <- ggplot() +
   geom_sf(data = troncons_pendant_confinement, aes(color = score), lwd = 1.5) +
   
   # scale_color_gradient2(midpoint = 1.2, low = colors_gradient["low"], mid = colors_gradient["mid"], high = colors_gradient["high"]) +
-    scale_color_gradientn(colours = colors_gradient) +
-
+  scale_color_gradientn(colours = colors_gradient) +
+  
   geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
   
   geom_sf(data = garonne, fill = "#ccddef",  
@@ -370,10 +424,10 @@ map_postconfinement <- ggplot() +
   geom_sf(data = troncons_1mois_apres_confinement, aes(color = score), lwd = 1.5) +
   
   # scale_color_gradient2(midpoint = 1.2, low = colors_gradient["low"], mid = colors_gradient["mid"], high = colors_gradient["high"]) +
-    # scale_color_gradientn(colours = terrain.colors(5)) +
-      scale_color_gradientn(colours = colors_gradient) +
-
-
+  # scale_color_gradientn(colours = terrain.colors(5)) +
+  scale_color_gradientn(colours = colors_gradient) +
+  
+  
   geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
   
   geom_sf(data = garonne, fill = "#ccddef",  
@@ -390,17 +444,134 @@ map_postconfinement <- ggplot() +
 
 ## Analyse carto avant / pendant / après confinement mars-mai 2020
 
-```{r printMapPreConfinement, fig.height=8}
+```{r printMapPreConfinement, fig.height=6}
 map_preconfinement
 ```
 
-```{r printMapConfinement, fig.height=8}
+```{r printMapConfinement, fig.height=6}
 map_confinement
 ```
 
-```{r printMapPostConfinement, fig.height=8}
+```{r printMapPostConfinement, fig.height=6}
 map_postconfinement
 ```
+
+
+## Même analyse uniquement pendant la plage (7h-9h, 17h-19h)
+
+```{r calculCongestionPrePostPendantConfinementHP}
+
+confinement1 <- confinements[1,]
+
+congestion_1mois_avant_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$deb, -months(1)) & date < add_with_rollback(confinement1$deb, -months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% c(7:9, 17:19)] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+
+congestion_pendant_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$deb, months(1)) & date < add_with_rollback(confinement1$deb, months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% c(7:9, 17:19)] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+congestion_1mois_apres_confinement <- copy(congestion_cleaned) %>% 
+  .[date >= add_with_rollback(confinement1$fin, months(1)) & date < add_with_rollback(confinement1$fin, months(1)+weeks(1))] %>% 
+  .[JO == TRUE & hour %in% c(7:9, 17:19)] %>% 
+  .[, .(score = mean(scores_horaires_ponderes, na.rm = TRUE)), by = gid]
+
+```
+
+
+```{r jointureTronconsCongestionHP}
+troncons_1mois_avant_confinement <- inner_join(troncons, congestion_1mois_avant_confinement, by = "gid" )
+troncons_pendant_confinement <- inner_join(troncons, congestion_pendant_confinement, by = "gid" )
+troncons_1mois_apres_confinement <- inner_join(troncons, congestion_1mois_apres_confinement, by = "gid" )
+```
+
+
+```{r mapPreConfinementHP}
+
+map_preconfinement <- ggplot() +
+  
+  geom_sf(data = troncons_1mois_avant_confinement, aes(color = score), lwd = 1.5) +
+  
+  # scale_color_gradient2(midpoint = 1.2, low = colors_gradient["low"], mid = colors_gradient["mid"], high = colors_gradient["high"]) +
+  
+  scale_color_gradientn(colours = colors_gradient) +
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font) +
+  
+  labs(title = "heures d'analyses : 7h-9h/17h-19h (jours ouvrés)", subtitle = "1 mois pré-confinement")
+
+```
+
+
+```{r mapConfinementHP}
+map_confinement <- ggplot() +
+  
+  geom_sf(data = troncons_pendant_confinement, aes(color = score), lwd = 1.5) +
+  
+  # scale_color_gradient2(midpoint = 1.2, low = colors_gradient["low"], mid = colors_gradient["mid"], high = colors_gradient["high"]) +
+  scale_color_gradientn(colours = colors_gradient) +
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font) +
+  
+  labs(subtitle = "1 mois après le début du confinement")
+
+```
+
+
+```{r mapPostConfinementHP}
+map_postconfinement <- ggplot() +
+  
+  geom_sf(data = troncons_1mois_apres_confinement, aes(color = score), lwd = 1.5) +
+  
+  # scale_color_gradient2(midpoint = 1.2, low = colors_gradient["low"], mid = colors_gradient["mid"], high = colors_gradient["high"]) +
+  # scale_color_gradientn(colours = terrain.colors(5)) +
+  scale_color_gradientn(colours = colors_gradient) +
+  
+  
+  geom_sf(data = limites_communes, color = "black", fill = "white", alpha = .3) +
+  
+  geom_sf(data = garonne, fill = "#ccddef",  
+          color = "#ccddef", alpha = .5)  +
+  
+  geom_sf(data = dplyr::filter(filaire, cat_dig %in% 1:4), color = "grey", alpha = .5) +
+  
+  theme_map(my_font = my_font) +
+  
+  labs(subtitle = "1 mois post-confinement")
+```
+
+
+
+```{r printMapPreConfinementHP, fig.height=6}
+map_preconfinement
+```
+
+```{r printMapConfinementHP, fig.height=6}
+map_confinement
+```
+
+```{r printMapPostConfinementHP, fig.height=6}
+map_postconfinement
+```
+
+
 
 ## Analyse des capteurs
 
@@ -442,15 +613,15 @@ plot_evolution_capteurs <- function(data, title, subtitle, font, pal) {
     
     theme_macarons(my_font = font) +
     
-    annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
+    # annotate("segment", x = (as.Date("2021-06-20")), xend = (as.Date("2021-06-20")),  y = miniJ, yend = maxiJ,  color = pal[5]) +
     
     geom_richtext(data = confinements_filtered, mapping = aes(x = fin - ((fin-deb)/2), y = maxiJ, label = label), angle = -90, hjust = 0,
-                  fill = NA, label.color = NA, family = font, size = 6) +
+                  fill = NA, label.color = NA, family = font, size = 4) +
     
-    coord_cartesian(ylim = c(miniJ,maxiJ)) +
-    
-    geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
-                  mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = font, size = 6)
+    coord_cartesian(ylim = c(miniJ,maxiJ)) #+
+  
+  # geom_richtext(data = tibble(label = "fin du couvre feu", x = as.Date("2021-06-20")+days(3)), 
+  #               mapping = aes(x = x, y = .99 * maxiJ, label = label), angle = 0, hjust = 0, fill = NA, label.color = NA, color = pal[5], family = font, size = 4)
   
   for(i in 1:nrow(confinements_filtered)) {
     
@@ -472,11 +643,24 @@ capteurs_journaliers <- capteurs %>%
 capteurs_HPM_HPS <- capteurs %>% 
   .[, .(comptage_5m = sum(comptage_5m, na.rm = TRUE)), by = list(date, HPM, HPS)]
 
-plot_capteurs_journalier <- plot_evolution_capteurs(data = capteurs_journaliers, title = "Evolution de la somme des capteurs auto (Journée complète)", subtitle = "", font = my_font, pal = pal)
+plot_capteurs_journalier <- plot_evolution_capteurs(data = capteurs_journaliers, 
+                                                    title = "Evolution de la somme des capteurs auto (Journée complète)",
+                                                    subtitle = "",
+                                                    font = my_font,
+                                                    pal = pal)
 
-plot_capteurs_HPM <- plot_evolution_capteurs(data = capteurs_HPM_HPS[HPM == TRUE], title = "Evolution de la somme des capteurs auto (HPM)", subtitle = "", font = my_font, pal = pal)
+plot_capteurs_HPM <- plot_evolution_capteurs(data = capteurs_HPM_HPS[HPM == TRUE],
+                                             title = "",
+                                             subtitle = "HPM",
+                                             font = my_font,
+                                             pal = pal)
 
-plot_capteurs_HPS <- plot_evolution_capteurs(data = capteurs_HPM_HPS[HPS == TRUE], title = "Evolution de la somme des capteurs auto (HPS)", subtitle = "", font = my_font, pal = pal)
+plot_capteurs_HPS <- plot_evolution_capteurs(data = capteurs_HPM_HPS[HPS == TRUE],
+                                             title = "",
+                                             subtitle = "HPS",
+                                             font = my_font,
+                                             pal = pal)
+
 
 ```
 
@@ -484,7 +668,7 @@ plot_capteurs_HPS <- plot_evolution_capteurs(data = capteurs_HPM_HPS[HPS == TRUE
 Fusion des graphes
 -->
 
-```{r plotEvolutionCapteurs, fig.width=10, fig.height=11}
+```{r plotEvolutionCapteurs, fig.width=10, fig.height=11, fig.showtext=TRUE}
 plot_capteurs_journalier / (plot_capteurs_HPM | plot_capteurs_HPS)
 ```
 
@@ -509,10 +693,10 @@ temps_parcours_journalier <- copy(temps_parcours_DT) %>%
 
 
 ```{r functionPlotTempsParcours}
-plot_evolution_temps_parcours <- function(data, title, subtitle, font, pal) {
+plot_evolution_temps_parcours <- function(data, title, subtitle, font, pal, miniY, maxiY) {
   
-  miniJ <- min(data$ecart_actuel_ref)
-  maxiJ <- max(data$ecart_actuel_ref)
+  # miniJ <- min(data$ecart_actuel_ref)
+  # maxiJ <- max(data$ecart_actuel_ref)
   
   g <- ggplot(data, aes(x = date, y = ecart_actuel_ref)) +
     geom_line(alpha = .6, color = pal[1]) +
@@ -523,7 +707,7 @@ plot_evolution_temps_parcours <- function(data, title, subtitle, font, pal) {
     
     theme_macarons(my_font = font) +
     
-    coord_cartesian(ylim = c(miniJ,maxiJ)) 
+    coord_cartesian(ylim = c(miniY,maxiY)) 
   g
 }
 
@@ -540,7 +724,9 @@ plot_journalier <- plot_evolution_temps_parcours(data = temps_parcours_journalie
                                                  title = "Evolution ratio temps de parcours réel / prévu (%)", 
                                                  subtitle = "Journée complète",
                                                  font = my_font, 
-                                                 pal = pal)
+                                                 pal = pal,
+                                                 miniY = 90,
+                                                 maxiY = 150)
 
 ```
 
@@ -558,10 +744,12 @@ temps_parcours_HPM <- copy(temps_parcours_DT) %>%
 
 ```{r plotHPMTempsParcours}
 plot_HPM <- plot_evolution_temps_parcours(data = temps_parcours_HPM[ecart_actuel_ref>150, ecart_actuel_ref :=150], 
-                                                 title = "Evolution ratio temps de parcours réel / prévu (%)", 
-                                                 subtitle = "HPM",
-                                                 font = my_font, 
-                                                 pal = pal)
+                                          title = "", 
+                                          subtitle = "HPM",
+                                          font = my_font, 
+                                          pal = pal,
+                                          miniY = 90,
+                                          maxiY = 150)
 ```
 
 
@@ -578,10 +766,12 @@ temps_parcours_HPS <- copy(temps_parcours_DT) %>%
 
 ```{r plotHPSTempsParcours}
 plot_HPS <- plot_evolution_temps_parcours(data = temps_parcours_HPS[ecart_actuel_ref>150, ecart_actuel_ref :=150], 
-                                                 title = "Evolution ratio temps de parcours réel / prévu (%)", 
-                                                 subtitle = "HPS",
-                                                 font = my_font, 
-                                                 pal = pal)
+                                          title = "", 
+                                          subtitle = "HPS",
+                                          font = my_font, 
+                                          pal = pal,
+                                          miniY = 90,
+                                          maxiY = 150)
 ```
 
 
@@ -590,7 +780,7 @@ Fusion des graphes
 -->
 
 
-```{r plotFinalTempsParcours, fig.width=10, fig.height=11}
+```{r plotFinalTempsParcours, fig.width=10, fig.height=11, fig.showtext=TRUE}
 plot_journalier / (plot_HPM | plot_HPS)
 ```
 

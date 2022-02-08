@@ -1,0 +1,13 @@
+name: congestion_light
+title: congestion_light
+username: y.mansiaux
+account: y.mansiaux
+server: rstudio-connect.bordeaux-it.fr
+hostUrl: https://rstudio-connect.bordeaux-it.fr/__api__
+appId: 60
+bundleId: 171
+url: https://rstudio-connect.bordeaux-it.fr/content/60/
+when: 1643806628.95725
+lastSyncTime: 1643806628.95729
+asMultiple: FALSE
+asStatic: FALSE

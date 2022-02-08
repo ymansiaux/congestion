@@ -1,0 +1,13 @@
+name: resultats_analyse_congestion3
+title: resultats_analyse_congestion3
+username: y.mansiaux
+account: y.mansiaux
+server: rstudio-connect.bordeaux-it.fr
+hostUrl: https://rstudio-connect.bordeaux-it.fr/__api__
+appId: 51
+bundleId: 161
+url: https://rstudio-connect.bordeaux-it.fr/content/51/
+when: 1643805255.95173
+lastSyncTime: 1643805255.95175
+asMultiple: FALSE
+asStatic: FALSE

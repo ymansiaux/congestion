@@ -1,0 +1,13 @@
+name: fake2
+title: fake
+username: y.mansiaux
+account: y.mansiaux
+server: rstudio-connect.bordeaux-it.fr
+hostUrl: https://rstudio-connect.bordeaux-it.fr/__api__
+appId: 58
+bundleId: 169
+url: https://rstudio-connect.bordeaux-it.fr/content/58/
+when: 1643806305.02544
+lastSyncTime: 1643806305.02547
+asMultiple: FALSE
+asStatic: FALSE
